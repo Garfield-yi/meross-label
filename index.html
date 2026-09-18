@@ -50,7 +50,7 @@
 <div id="tp-preview" class="tp-gallery" aria-label="透明计划标签预览"></div>
 <div class="preview-bottom"><div id="tp-status" class="tp-status" role="status" aria-live="polite">请选择 CSV 文件</div><progress id="tp-progress" class="tp-progress" max="100" value="0" hidden aria-label="PDF 生成进度"></progress><div class="hint tp-preview-note" id="tp-preview-note">预览显示部分标签，导出包含全部记录。</div><div class="actions"><div class="print-note">Data Matrix 与文字以矢量形式导出<br>打印请选择「实际大小 / 100%」</div><button id="tp-export" class="button primary" disabled>↓ 批量导出 PDF</button></div></div></section>
 </main></div>
-<footer class="footer"><div class="notice" id="feature-notice">固定模板包含号码标题、NEW 标记及产品信息。占位内容仅用于展示排版，请填写实际信息后导出。每种类型和尺寸分别保存内容；重置仅作用于当前模板。</div><div class="credit">开发者 · <strong>yiyuanzhi</strong></div></footer>
+<footer class="footer"><div class="notice" id="feature-notice">固定模板包含号码标题、NEW 标记及产品信息。占位内容仅用于展示排版，请填写实际信息后导出。同一类型切换尺寸时保留填写内容；重置仅作用于当前模板。</div><div class="credit">开发者 · <strong>yiyuanzhi</strong></div></footer>
 <script>!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
 /*! *****************************************************************************
     Copyright (c) Microsoft Corporation. All rights reserved.
@@ -371,7 +371,8 @@ $('export').addEventListener('click',async()=>{
   const scene=currentScene,data={...currentData},mode=activeMode;exporting=true;$('export').disabled=true;$('export').textContent='正在导出…';
   try{
     const bytes=await makePDF(scene,data,mode),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download=`${MODES[mode].title}_${MODES[mode].mm.join('x')}mm_标签_${data.ean}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    const productModel=data.version.trim().split(/\s+/)[0].replace(/[<>:"/\\|?*\u0000-\u001f]/g,'-');
+    a.href=url;a.download=`${MODES[mode].title}_${MODES[mode].mm.join('x')}mm_标签_${productModel}_${data.ean}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
     $('message').textContent=`${MODES[mode].title} PDF 已生成，请在浏览器下载中查看。`;
     $('message').classList.add('success');
   }catch(e){$('message').classList.remove('success');$('message').textContent='导出失败：'+e.message;}
@@ -398,6 +399,9 @@ try{
 }catch{}
 function switchMode(mode){
   if(!Object.hasOwn(MODES,mode))return;
+  if(mode!==activeMode&&MODES[mode].title===MODES[activeMode].title){
+    drafts[mode]=Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value]));
+  }
   activeMode=mode;
   for(const k in EMPTY)fields[k].value=drafts[mode][k];
   const {title,length,symbology,mm,width,height}=MODES[mode];
@@ -415,7 +419,7 @@ function switchMode(mode){
   $('ean-hint').textContent=fnsku?'请输入已有 FNSKU：10 位大写英文字母或数字，不含空格及符号。':`请输入已有 ${title}：${length} 位数字，包含末位校验位，不含空格及符号。`;
   for(const radio of document.querySelectorAll('[name="label-type"]'))radio.checked=radio.value===title;
   $('label-size').value=mm.join('x');
-  $('selection-summary').innerHTML=`当前模板：<strong>${title} · ${mm.join(' × ')} mm</strong>　｜　${symbology}　｜　独立保存`;
+  $('selection-summary').innerHTML=`当前模板：<strong>${title} · ${mm.join(' × ')} mm</strong>　｜　${symbology}　｜　切换尺寸保留内容`;
   $('form-description').textContent='填写已有产品信息，可选填第二型号';
   refresh();
 }
